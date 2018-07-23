@@ -1,0 +1,203 @@
+<style>
+#myCanvas{
+  background-color:pink;
+  margin:auto;
+  width:100%;
+  min-width:300px;
+}
+.scaletool{
+ /*background-color:orange;*/
+  border:1px pink;
+  border-bottom-style:dotted;
+  margin:0 10%;
+  padding:10px;
+}
+</style>
+
+<script>
+var canvas;
+   var canvasWidth;
+   var ctx;
+   var x;
+   var y;
+   var download;
+   var data;
+   var fileInput;
+   var img;
+
+
+
+
+  window.onload = function() {
+
+
+    prepareExample();
+  }
+
+  function prepareExample() {
+    img = document.getElementById('imgg');
+
+    var deviceWidth = window.innerWidth;;
+      canvasWidth = Math.min(600, deviceWidth-20);
+  canvasHeight = Math.min(480, deviceWidth-20);
+    canvas = document.getElementById('myCanvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+
+
+    ctx = canvas.getContext('2d');
+
+     x = canvas.width/2 - img.width/2;
+     y = canvas.height/2 - img.height/2;
+
+    ctx.drawImage(img, x, y);
+
+    ctx.textAlign = 'center';
+    ctx.lineWidth  = 10;
+    ctx.font = '20pt impact';
+    ctx.strokeStyle = 'black';
+    ctx.fillStyle = 'white';
+    ctx.lineJoin = 'round';
+    doTransform();
+
+
+    fileInput = document.getElementById('fileInput');
+
+  fileInput.addEventListener('change', function(e) {
+
+    var reader = new FileReader();
+    reader.onload = function(event){
+
+        img.onload = function(){
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('scale').value = 1;
+            document.getElementById('rotate').value = 0;
+                 x = canvas.width/2 - img.width/2;
+     y = canvas.height/2 - img.height/2;
+            ctx.drawImage(img,x,y);
+            //imgTransform();
+        }
+        img.src = reader.result;
+    }
+    reader.readAsDataURL(fileInput.files[0]);
+
+
+
+
+   }, false);
+
+   var controls = document.getElementById('controls');
+   var save = document.getElementById('save');
+   save.addEventListener('click', function(e) {
+     controls.style.display = 'none';
+     document.getElementById('spinner-div').style.display='inline';
+     var data = canvas.toDataURL();
+
+     request = $.ajax({
+          url: "/meme/save",
+          type: "post",
+          data: data
+      });
+
+      // callback handler that will be called on success
+      request.done(function (response, textStatus, jqXHR){
+          // log a message to the console
+          window.location.href = '/meme/view/'+response;
+      });
+    }, false);
+
+    scale = document.getElementById('scale');
+    scale.addEventListener('change', doTransform, false);
+
+    rotate = document.getElementById('rotate');
+    rotate.addEventListener('change', doTransform, false);
+
+    download = document.getElementById('img-download');
+    download.addEventListener('click', prepareDownload, false);
+
+
+
+  }
+
+  function doTransform() {
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Translate to center so transformations will apply around this point
+    ctx.translate(canvas.width/2, canvas.height/2);
+
+    // Perform scale
+    var val = document.getElementById('scale').value;
+    ctx.scale(val,val);
+
+    // Perform rotation
+    val = document.getElementById('rotate').value;
+    ctx.rotate(val*Math.PI/180);
+
+    // Reverse the earlier translation
+    ctx.translate(-canvas.width/2, -canvas.height/2);
+
+    // Finally, draw the image
+    ctx.drawImage(img, x, y);
+
+    ctx.restore();
+
+    text = document.getElementById('custom-text').value;
+     text = text.toUpperCase();
+     wrapText(ctx, text, canvas.width/2, canvas.height - canvas.height/4.5, canvasWidth-canvasWidth/3, 30);
+    /*text=document.getElementById('custom-text').value;*/
+  }
+
+
+  function prepareDownload() {
+    var data = canvas.toDataURL();
+    download.href = data;
+    //準備下載
+  }
+
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    var words = text.split(' ');
+    var line = '';
+/*function warpText(ctx,text,x,y,maxWidth,lineHeight){var words=text.split('');var line='';for(var n=0;n<word.length;n++){var testLine=line+words[n]+'';var metrics=ctx.measureText(testLine);var testWidth=met}}*/
+    for(var n = 0; n < words.length; n++) { var testLine = line + words[n] + ' '; var metrics = ctx.measureText(testLine); var testWidth = metrics.width; if (testWidth > maxWidth && n > 0) {
+        ctx.strokeText(line, x, y);
+        ctx.fillText(line, x, y);
+        line = words[n] + ' ';
+        y += lineHeight;
+      }
+      else {
+        line = testLine;
+      }
+    }
+    ctx.strokeText(line, x, y);
+    ctx.fillText(line, x, y);
+  }
+
+</script>
+<img id="imgg" style="display: none;" src="http://placekitten.com/g/400/400" alt="the imgg">
+
+<canvas id="myCanvas">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<div class="scaletool">
+  Scale:<input id="scale" max="4" min="0.1" step="0.01" type="range" value="1" />
+</div>
+<div class="scaletool">
+  Rotate: <input id="rotate" max="180" min="-180" step="1" type="range" value="0" />
+</div>
+<div class="scaletool">
+  <input id="custom-text" style="width: 80%;" value="your message" type="text">
+</div>
+
+<div class="scaletool">
+  textSize:<input type="range" id="textSize" min="0" max="200" step="1" value="50" />
+</div>
+
+
+<div class="scaletool">
+  <input id="fileInput" name="imageLoader" type="file"></div>
+<div class="scaletool">
+  <a id="img-download" download="mobiforge-canvas.png"></a>Download image OR<br>
+  <input id="save" value="Save online" type="checkbox"></div>
